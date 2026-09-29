@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>断字词典 · Hyphenation Dictionary</title>
+  </head>
+  <body>
+    <header>
+      <h1>断字词典</h1>
+      <p class="subtitle">Liang 断字算法 · 模式 trie + 例外词表 · 离线编辑与逐间隙调试</p>
+    </header>
+    <main>
+      <section class="editor">
+        <div class="panel">
+          <h2>断字模式 <span class="hint" id="patterns-count"></span></h2>
+          <p class="hint">每行一条（1～1000）：小写 a-z，两端可带边界符 <code>.</code>，每个间隙至多一位 0～9 数字。<code>#</code> 开头为注释。</p>
+          <textarea id="patterns" spellcheck="false" rows="10"></textarea>
+        </div>
+        <div class="panel">
+          <h2>例外词表 <span class="hint" id="exceptions-count"></span></h2>
+          <p class="hint">每行一词：<code>-</code> 标记显式断点（覆盖模式结果）；不带 <code>-</code> 的词禁止一切断字。</p>
+          <textarea id="exceptions" spellcheck="false" rows="6"></textarea>
+        </div>
+        <div class="panel">
+          <h2>待断字词表 <span class="hint" id="words-count"></span></h2>
+          <p class="hint">空白分隔，≤2000 词，每词 1～40 个小写字母。</p>
+          <textarea id="words" spellcheck="false" rows="4"></textarea>
+        </div>
+        <div class="panel config">
+          <h2>限制</h2>
+          <label>左侧最少保留字母 lefthyphenmin
+            <input id="leftMin" type="number" min="0" max="40" value="2" />
+          </label>
+          <label>右侧最少保留字母 righthyphenmin
+            <input id="rightMin" type="number" min="0" max="40" value="2" />
+          </label>
+          <button id="exportBtn" type="button">导出 JSON</button>
+        </div>
+        <div id="messages"></div>
+      </section>
+      <section class="results">
+        <div id="legend">
+          <span class="chip st-break">奇</span> 可断（奇数分值）
+          <span class="chip st-exception-break">9</span> 例外断点
+          <span class="chip st-min">奇</span> 奇数但被左右限制排除
+          <span class="chip st-even">偶</span> 偶数 / 无命中
+          <span class="chip st-exception-blocked">0</span> 例外禁止
+          <span class="chip st-edge">·</span> 词边界
+          <span class="hint">点击任意间隙查看来源模式与排除原因</span>
+        </div>
+        <div id="words-out"></div>
+      </section>
+    </main>
+    <script type="module" src="/src/app.ts"></script>
+  </body>
+</html>

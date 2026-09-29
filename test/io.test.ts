@@ -20,6 +20,14 @@ describe('parseExceptions', () => {
     expect(exceptions[1].breaks.size).toBe(0);
   });
 
+  it('复合词例外：= 转为固定连接号并计入位置，- 标记可断间隙', () => {
+    const { exceptions, errors } = parseExceptions('a-b=c-d');
+    expect(errors).toEqual([]);
+    expect(exceptions[0].word).toBe('ab-cd');
+    // 'a' '-' 后 pos=1；'b' pos=2；'=' pos=3；'c' '-' 后 pos=4；'d' pos=5
+    expect([...exceptions[0].breaks].sort((a, b) => a - b)).toEqual([1, 4]);
+  });
+
   it('同词重复时后者覆盖前者', () => {
     const { exceptions } = parseExceptions('table\nta-ble');
     expect(exceptions.length).toBe(1);
@@ -54,6 +62,12 @@ describe('parseWords', () => {
     const { words, errors } = parseWords(text);
     expect(words.length).toBe(MAX_WORDS);
     expect(errors.some((e) => e.includes(`${MAX_WORDS}`))).toBe(true);
+  });
+
+  it('接受词段间连接号的复合词，拒绝连续/首尾连接号', () => {
+    const { words, errors } = parseWords('ab-cd ab-cd-ef -ab ab- cd--ef');
+    expect(words).toEqual(['ab-cd', 'ab-cd-ef']);
+    expect(errors.length).toBe(3);
   });
 });
 
@@ -118,5 +132,43 @@ describe('exportJSON 与高亮一致', () => {
     expect(parsed.patterns.length).toBe(patterns.length);
     expect(parsed.exceptions).toContain('ta-ble');
     expect(parsed.config).toEqual(config);
+  });
+
+  it('复合词导出：固定边界可区分、例外来源可对应、三者仍一致', () => {
+    const { patterns: p } = parsePatterns('.c1d');
+    const { exceptions: e } = parseExceptions('c-d');
+    const h = new Hyphenator(p, e, { leftMin: 0, rightMin: 0 });
+    const r = h.analyze('ab-cd');
+    const parsed = JSON.parse(exportJSON([r], { leftMin: 0, rightMin: 0 }, p, e)) as {
+      words: Array<{
+        word: string;
+        hyphenated: string;
+        breakPoints: number[];
+        segments: Array<{ text: string; exception: string | null; exceptionScope: string | null }>;
+        gaps: Array<{
+          gap: number;
+          status: string;
+          fixedBoundary: boolean;
+          breakable: boolean;
+          exception: string | null;
+          source: string;
+        }>;
+      }>;
+    };
+    const w = parsed.words[0];
+    expect(w.segments.map((s) => s.text)).toEqual(['ab', 'cd']);
+    expect(w.segments[1].exception).toBe('c-d');
+    expect(w.segments[1].exceptionScope).toBe('segment');
+    // 连接号两侧间隙为固定边界
+    const fixed = w.gaps.filter((g) => g.fixedBoundary).map((g) => g.gap);
+    expect(fixed).toEqual([2, 3]);
+    expect(w.gaps.filter((g) => g.status === 'fixed-boundary')).toHaveLength(2);
+    // 段内例外断点的来源能对应到具体例外条目
+    expect(w.gaps.find((g) => g.gap === 4)?.exception).toBe('c-d');
+    expect(w.gaps.find((g) => g.gap === 4)?.source).toContain('c-d');
+    // 一致性不变量仍成立
+    expect(w.gaps.filter((g) => g.breakable).map((g) => g.gap)).toEqual(w.breakPoints);
+    expect(w.breakPoints).toEqual([4]);
+    expect(w.hyphenated).toBe('ab-c-d');
   });
 });

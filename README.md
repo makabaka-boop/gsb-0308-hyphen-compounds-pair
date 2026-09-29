@@ -52,7 +52,7 @@ docker compose up --build   # 打开 http://localhost:8080
 
 ## 测试
 
-`test/` 下四个套件共 34 例：
+`test/` 下四个套件共 43 例：
 
 - `pattern.test.ts`：模式语法（边界符位置、间隙数字唯一性、数量上限、去重）。
 - `trie.test.ts`：**trie 与朴素逐模式扫描对拍**——固定用例（重叠规则取最大值、

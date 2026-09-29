@@ -131,3 +131,109 @@ describe('Hyphenator 例外词覆盖', () => {
     expect(other.isException).toBe(false);
   });
 });
+
+describe('Hyphenator 复合词逐词段判定', () => {
+  it('带边界符的模式按各词段独立加点后命中（与单词段分析一致）', () => {
+    const h = new Hyphenator(makePatterns(['.c1d']), [], { leftMin: 0, rightMin: 0 });
+    const single = h.analyze('cd');
+    const comp = h.analyze('ab-cd');
+    expect(single.breakPoints).toEqual([1]);
+    // 后段 c|d 的断点在全局间隙 4（连接号占全局间隙 2/3）
+    expect(comp.breakPoints).toEqual([4]);
+    expect(comp.hyphenated).toBe('ab-c-d');
+    expect(comp.gaps[4].status).toBe('break');
+    expect(comp.gaps[4].patternSource?.raw).toBe('.c1d');
+  });
+
+  it('多段词中每个后段的边界模式都能命中', () => {
+    const h = new Hyphenator(makePatterns(['.c1d', '.e1f']), [], { leftMin: 0, rightMin: 0 });
+    const r = h.analyze('ab-cd-ef');
+    expect(r.breakPoints).toEqual([4, 7]);
+    expect(r.hyphenated).toBe('ab-c-d-e-f');
+    expect(r.segments.map((s) => s.text)).toEqual(['ab', 'cd', 'ef']);
+  });
+
+  it('连接号两侧间隙标记为固定边界，永不参与断字，且编号沿原输入串', () => {
+    const h = new Hyphenator(makePatterns(['.c1d']), [], { leftMin: 0, rightMin: 0 });
+    const r = h.analyze('ab-cd');
+    expect(r.gaps.map((g) => g.status)).toEqual([
+      'edge',
+      'even',
+      'fixed-boundary',
+      'fixed-boundary',
+      'break',
+      'edge',
+    ]);
+    for (const g of r.gaps) {
+      if (g.status === 'fixed-boundary') {
+        expect(g.breakable).toBe(false);
+        expect(g.finalScore).toBe(0);
+        expect(g.reason).toContain('固定');
+      }
+    }
+    expect(r.breakPoints).not.toContain(2);
+    expect(r.breakPoints).not.toContain(3);
+    // 固定边界处的段内左/右字母数为 0
+    expect(r.gaps[2].left).toBe(2);
+    expect(r.gaps[2].right).toBe(0);
+    expect(r.gaps[3].left).toBe(0);
+    expect(r.gaps[3].right).toBe(2);
+    expect(r.dotted).toBe('.ab. .cd.');
+  });
+
+  it('整条复合词例外覆盖各段，且左右保留数按词段局部判定', () => {
+    const h = new Hyphenator(
+      makePatterns([]),
+      makeExceptions(['a-b=c-d']), // 对应输入 ab-cd；标记全局间隙 1 与 4
+      { leftMin: 2, rightMin: 0 },
+    );
+    const r = h.analyze('ab-cd');
+    expect(r.isException).toBe(true);
+    // 两个标记断点在各自词段内左侧都只有 1 个字母 → 均被 leftMin 排除
+    expect(r.gaps[1].status).toBe('exception-left-min');
+    expect(r.gaps[4].status).toBe('exception-left-min');
+    expect(r.breakPoints).toEqual([]);
+    // 固定边界仍优先于例外，且来源不被误记为例外
+    expect(r.gaps[2].status).toBe('fixed-boundary');
+    expect(r.gaps[3].status).toBe('fixed-boundary');
+
+    const loose = new Hyphenator(makePatterns([]), makeExceptions(['a-b=c-d']), {
+      leftMin: 1,
+      rightMin: 1,
+    });
+    expect(loose.analyze('ab-cd').breakPoints).toEqual([1, 4]);
+  });
+
+  it('无整条例外时各词段独立使用自己的例外条目，来源可对应', () => {
+    const h = new Hyphenator(makePatterns([]), makeExceptions(['c-d']), {
+      leftMin: 0,
+      rightMin: 0,
+    });
+    const r = h.analyze('ab-cd');
+    expect(r.isException).toBe(true);
+    expect(r.segments[0].exception).toBeNull();
+    expect(r.segments[1].exception?.raw).toBe('c-d');
+    expect(r.segments[1].exceptionScope).toBe('segment');
+    expect(r.breakPoints).toEqual([4]);
+    expect(r.gaps[4].status).toBe('exception-break');
+    expect(r.gaps[4].finalSource).toContain('c-d');
+    expect(r.gaps[4].exceptionSource).toBe('c-d');
+    // 未标记的段内间隙被该段例外禁止
+    expect(r.gaps[3].status).toBe('fixed-boundary');
+  });
+
+  it('整条复合词例外优先于词段自身例外', () => {
+    const h = new Hyphenator(
+      makePatterns(['.c1d']),
+      makeExceptions(['c-d', 'ab=cd']), // 整条例外无断点 → 禁止一切断字
+      { leftMin: 0, rightMin: 0 },
+    );
+    const r = h.analyze('ab-cd');
+    expect(r.segments[1].exception?.raw).toBe('ab=cd');
+    expect(r.segments[1].exceptionScope).toBe('whole');
+    // 模式在 gap 4 给出奇数 1，但整条例外未标记 → 禁止
+    expect(r.gaps[4].patternScore).toBe(1);
+    expect(r.gaps[4].status).toBe('exception-blocked');
+    expect(r.breakPoints).toEqual([]);
+  });
+});

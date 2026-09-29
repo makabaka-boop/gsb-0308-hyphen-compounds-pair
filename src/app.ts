@@ -74,6 +74,7 @@ function chipClass(status: GapStatus): string {
     case 'exception-right-min': return 'st-min';
     case 'even': return 'st-even';
     case 'exception-blocked': return 'st-exception-blocked';
+    case 'fixed-boundary': return 'st-fixed';
     case 'edge': return 'st-edge';
   }
 }
@@ -88,13 +89,14 @@ function statusText(s: GapStatus): string {
     case 'exception-right-min': return '右侧不足';
     case 'even': return '偶数分值';
     case 'exception-blocked': return '例外禁止';
+    case 'fixed-boundary': return '固定边界';
     case 'edge': return '词边界';
   }
 }
 
 function titleFor(g: GapInfo): string {
   return (
-    `间隙 ${g.gap}：左 ${g.left} / 右 ${g.right}，` +
+    `间隙 ${g.gap}（词段 ${g.segment + 1}）：段内左 ${g.left} / 右 ${g.right}，` +
     `模式分值 ${g.patternScore}（${g.patternSource ? g.patternSource.raw : '无命中'}），` +
     `最终分值 ${g.finalScore}\n${g.reason}`
   );
@@ -128,7 +130,8 @@ function render(): void {
 }
 
 function chipHtml(word: string, g: GapInfo): string {
-  const label = g.status === 'edge' ? '·' : String(g.finalScore);
+  const label =
+    g.status === 'edge' ? '·' : g.status === 'fixed-boundary' ? '=' : String(g.finalScore);
   return (
     `<button class="chip ${chipClass(g.status)}" type="button" ` +
     `data-word="${escapeHtml(word)}" data-gap="${g.gap}" title="${escapeHtml(titleFor(g))}">${label}</button>`
@@ -137,21 +140,24 @@ function chipHtml(word: string, g: GapInfo): string {
 
 function showDetail(card: HTMLElement, result: WordResult, gapNo: number): void {
   const detail = card.querySelector('.gap-detail') as HTMLElement;
+  const compound = result.segments.length > 1;
   detail.hidden = false;
   detail.innerHTML = `<table class="gap-table">
     <thead><tr>
-      <th>间隙</th><th>左/右</th><th>模式分值</th><th>贡献最大值的模式</th>
-      <th>最终分值</th><th>状态</th><th>原因</th>
+      <th>间隙</th>${compound ? '<th>词段</th>' : ''}<th>段内左/右</th><th>模式分值</th><th>贡献最大值的模式</th>
+      <th>最终分值</th><th>生效来源</th><th>状态</th><th>原因</th>
     </tr></thead>
     <tbody>${result.gaps
       .map((g) => {
         const cls = g.gap === gapNo ? ' class="sel"' : '';
         return `<tr${cls}>
         <td>${g.gap}</td>
+        ${compound ? `<td>${g.segment + 1}（${escapeHtml(result.segments[g.segment].text)}）</td>` : ''}
         <td>${g.left} / ${g.right}</td>
         <td>${g.patternScore}</td>
         <td class="mono">${g.patternSource ? escapeHtml(g.patternSource.raw) : '—'}</td>
         <td><b>${g.finalScore}</b></td>
+        <td class="mono">${escapeHtml(g.finalSource)}</td>
         <td><span class="dot ${chipClass(g.status)}"></span>${statusText(g.status)}</td>
         <td class="reason">${escapeHtml(g.reason)}</td>
       </tr>`;

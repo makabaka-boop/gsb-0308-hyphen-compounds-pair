@@ -52,13 +52,16 @@ docker compose up --build   # 打开 http://localhost:8080
 
 ## 测试
 
-`test/` 下四个套件共 34 例：
+`test/` 下五个套件共 52 例：
 
 - `pattern.test.ts`：模式语法（边界符位置、间隙数字唯一性、数量上限、去重）。
 - `trie.test.ts`：**trie 与朴素逐模式扫描对拍**——固定用例（重叠规则取最大值、
   同分值来源取舍、边界匹配、首间隙数字映射）+ 300 随机模式 × 300 随机词逐位一致。
 - `analyze.test.ts`：The TeXbook 附录 H 经典例（`hyphenation` → `hy-phen-a-tion`）、
   边界间隙不可断、左右最少保留字母数、例外覆盖（禁止/新增/受限制约束）、无断点词。
+- `compound.test.ts`：复合词词段独立计分（边界模式在词段边缘匹配、左右保留按词段判定）、
+  连接号固定边界间隙（逐间隙与导出 JSON 均可辨识）、`=` 固定连接号例外（整条覆盖各词段、
+  词段级例外独立生效、断点受词段左右限制）、例外解析（`=`/`-` 归一、连续连接号拒绝）。
 - `io.test.ts`：输入解析限制，以及**导出 JSON 与高亮一致性**不变量
   （`breakPoints` ⇔ 逐间隙 `breakable` ⇔ `hyphenated`）。
 
@@ -69,7 +72,7 @@ src/
   pattern.ts   模式解析与校验
   trie.ts      模式 trie（分值存于 key 终端节点，仅完整命中计分）
   naive.ts     朴素逐模式扫描（对拍参考实现）
-  analyze.ts   Hyphenator：计分 → 例外覆盖 → 左右限制 → 逐间隙结论
+  analyze.ts   Hyphenator：复合词按词段切分 → 计分 → 例外覆盖 → 左右限制 → 逐间隙结论
   io.ts        输入解析、限制参数、导出 JSON
   app.ts       页面渲染与交互（无框架）
   defaults.ts  默认示例词典（plain TeX 美式英语模式节选 + 例外）

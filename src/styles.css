@@ -10,6 +10,7 @@
   --min: #d97706;
   --even: #9ca3af;
   --blocked: #4b5563;
+  --fixed: #0891b2;
   font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
 }
 
@@ -173,6 +174,22 @@ button#exportBtn:hover { filter: brightness(1.1); }
 .chip.st-even { background: #f3f4f6; color: var(--even); }
 .chip.st-exception-blocked { background: #e5e7eb; color: var(--blocked); text-decoration: line-through; }
 .chip.st-edge { background: transparent; border-style: dashed; color: #c4c9d1; }
+.chip.st-fixed {
+  background: #cffafe;
+  border-color: var(--fixed);
+  color: var(--fixed);
+  font-weight: 700;
+  cursor: default;
+}
+.chip.st-fixed:hover { outline: none; }
+
+.fixed-hyphen {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--fixed);
+  margin: 0 1px;
+}
 
 .gap-detail { margin-top: 10px; overflow-x: auto; }
 .gap-table {
@@ -205,3 +222,4 @@ button#exportBtn:hover { filter: brightness(1.1); }
 .dot.st-even { background: var(--even); border-color: var(--even); }
 .dot.st-exception-blocked { background: var(--blocked); border-color: var(--blocked); }
 .dot.st-edge { background: #d1d5db; }
+.dot.st-fixed { background: var(--fixed); border-color: var(--fixed); }

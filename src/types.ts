@@ -46,16 +46,19 @@ export type GapStatus =
   | 'exception-break' // 例外词显式断点：可断
   | 'exception-blocked' // 例外词未标记的间隙：禁止断开
   | 'exception-left-min' // 例外断点但左侧保留不足
-  | 'exception-right-min'; // 例外断点但右侧保留不足
+  | 'exception-right-min' // 例外断点但右侧保留不足
+  | 'fixed-boundary'; // 复合词连接号两侧的固定边界间隙，永不参与断字
 
 /** 单个间隙的完整判定结果 */
 export interface GapInfo {
   /** 间隙编号 0..n */
   gap: number;
-  /** 左侧字母数（= gap） */
+  /** 左侧字母数（= gap；复合词按所属词段计，固定边界间隙取词段边缘值） */
   left: number;
-  /** 右侧字母数（= n - gap） */
+  /** 右侧字母数（= n - gap；复合词按所属词段计，固定边界间隙取词段边缘值） */
   right: number;
+  /** 是否为复合词连接号两侧的固定边界间隙（永不参与断字） */
+  fixedBoundary: boolean;
   /** 模式匹配分值：所有命中模式在该间隙权重的最大值（无命中为 0） */
   patternScore: number;
   /** 贡献该最大值的模式（同分值并列时取词典中先出现者；无命中为 null） */
@@ -83,6 +86,8 @@ export interface WordResult {
   /** 插入断点连字符后的形式，如 "hy-phen-ation" */
   hyphenated: string;
   isException: boolean;
+  /** 固定边界间隙集合（复合词连接号两侧，沿原输入串统一编号） */
+  fixedBoundaries: number[];
 }
 
 export interface DictionaryConfig {

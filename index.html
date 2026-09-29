@@ -19,12 +19,12 @@
         </div>
         <div class="panel">
           <h2>例外词表 <span class="hint" id="exceptions-count"></span></h2>
-          <p class="hint">每行一词：<code>-</code> 标记显式断点（覆盖模式结果）；不带 <code>-</code> 的词禁止一切断字。</p>
+          <p class="hint">每行一词：<code>-</code> 标记显式断点（覆盖模式结果），<code>=</code> 标记复合词固定连接号（对应输入的 <code>-</code>）；不带 <code>-</code> 的词禁止一切断字。</p>
           <textarea id="exceptions" spellcheck="false" rows="6"></textarea>
         </div>
         <div class="panel">
           <h2>待断字词表 <span class="hint" id="words-count"></span></h2>
-          <p class="hint">空白分隔，≤2000 词，每词 1～40 个小写字母。</p>
+          <p class="hint">空白分隔，≤2000 词，每词 1～40 个小写字母；词段间可用连接号（如 <code>hyphen-ation</code>），连接号为固定边界。</p>
           <textarea id="words" spellcheck="false" rows="4"></textarea>
         </div>
         <div class="panel config">
@@ -46,6 +46,7 @@
           <span class="chip st-min">奇</span> 奇数但被左右限制排除
           <span class="chip st-even">偶</span> 偶数 / 无命中
           <span class="chip st-exception-blocked">0</span> 例外禁止
+          <span class="chip st-fixed">=</span> 复合词固定边界
           <span class="chip st-edge">·</span> 词边界
           <span class="hint">点击任意间隙查看来源模式与排除原因</span>
         </div>

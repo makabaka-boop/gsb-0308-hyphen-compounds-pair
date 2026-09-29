@@ -42,13 +42,34 @@ export function parsePatterns(text: string): { patterns: Pattern[]; errors: stri
   return { patterns, errors };
 }
 
+/**
+ * 例外条目对应的输入词：
+ * "=" 表示复合词固定连接号，先归一为输入词中的 "-"，
+ * 再去掉所有显式断点标记 "-"（纯字母部分用于字母数上限校验）。
+ */
+function exceptionWord(line: string): string {
+  // '=' 归一为输入词中的固定连接号 '-'；作为断点标记的 '-' 直接删除。
+  // 顺序不能反：先归一再删除才能同时区分两种连字符。
+  let word = '';
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '=') word += '-';
+    else if (ch !== '-') word += ch;
+  }
+  return word;
+}
+function exceptionLetters(line: string): string {
+  return exceptionWord(line).replace(/-/g, '');
+}
+
 /** 解析例外词表："-" 标记断点，"=" 标记复合词固定边界；同词重复时后者覆盖前者 */
 export function parseExceptions(text: string): { exceptions: ExceptionWord[]; errors: string[] } {
   const byWord = new Map<string, ExceptionWord>();
   const errors: string[] = [];
 
   for (const line of lines(text)) {
-    if (byWord.size >= MAX_EXCEPTIONS && !byWord.has(line.replace(/-/g, '').replace(/=/g, '-'))) {
+    const word = exceptionWord(line);
+    if (byWord.size >= MAX_EXCEPTIONS && !byWord.has(word)) {
       errors.push(`例外词数量超过 ${MAX_EXCEPTIONS} 条，其余已忽略`);
       break;
     }
@@ -56,27 +77,35 @@ export function parseExceptions(text: string): { exceptions: ExceptionWord[]; er
       errors.push(`例外词 "${line}" 含非法字符（仅允许 a-z、- 与 =），已忽略`);
       continue;
     }
-    const word = line.replace(/-/g, '').replace(/=/g, '-');
-    if (word.length === 0) {
+    if (exceptionLetters(line).length === 0) {
       errors.push(`例外词 "${line}" 不含字母，已忽略`);
       continue;
     }
-    if (word.replace(/-/g, '').length > MAX_WORD_LEN) {
+    if (exceptionLetters(line).length > MAX_WORD_LEN) {
       errors.push(`例外词 "${line}" 超过 ${MAX_WORD_LEN} 个字母，已忽略`);
       continue;
     }
+    // 连续连接号不合法；词首/词尾的连接号（- 或 =）无效，仅告警后忽略
+    if (/[-=]{2,}/.test(line)) {
+      errors.push(`例外词 "${line}" 含连续连接号，已忽略`);
+      continue;
+    }
+    // 断点位置相对归一后的 word：'=' 与字母在 word 中占位置，
+    // 断点标记 '-' 不占位置
     const breaks = new Set<number>();
+    let edgeDropped = 0;
     let pos = 0;
-    let dropped = 0;
     for (const ch of line) {
       if (ch === '-') {
         if (pos >= 1 && pos <= word.length - 1) breaks.add(pos);
-        else dropped += 1;
+        else edgeDropped += 1;
       } else {
-        pos += 1;
+        pos += 1; // '=' 归一为 word 中的连接号，同样占位置
       }
     }
-    if (dropped > 0) errors.push(`例外词 "${line}" 词首/词尾的连字符无效，已忽略该标记`);
+    if (edgeDropped > 0) {
+      errors.push(`例外词 "${line}" 词首/词尾的连接号无效，已忽略该标记`);
+    }
     byWord.set(word, { raw: line, word, breaks, index: byWord.size });
   }
   return { exceptions: [...byWord.values()], errors };
@@ -133,11 +162,13 @@ export function exportJSON(
       word: r.word,
       hyphenated: r.hyphenated,
       breakPoints: r.breakPoints,
+      fixedBoundaries: r.fixedBoundaries,
       exception: r.isException,
       gaps: r.gaps.map((g) => ({
         gap: g.gap,
         left: g.left,
         right: g.right,
+        fixedBoundary: g.fixedBoundary,
         finalScore: g.finalScore,
         patternScore: g.patternScore,
         source: g.finalSource,

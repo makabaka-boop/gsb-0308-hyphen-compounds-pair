@@ -74,6 +74,7 @@ function chipClass(status: GapStatus): string {
     case 'exception-right-min': return 'st-min';
     case 'even': return 'st-even';
     case 'exception-blocked': return 'st-exception-blocked';
+    case 'fixed-boundary': return 'st-fixed';
     case 'edge': return 'st-edge';
   }
 }
@@ -88,6 +89,7 @@ function statusText(s: GapStatus): string {
     case 'exception-right-min': return '右侧不足';
     case 'even': return '偶数分值';
     case 'exception-blocked': return '例外禁止';
+    case 'fixed-boundary': return '固定边界';
     case 'edge': return '词边界';
   }
 }
@@ -96,7 +98,7 @@ function titleFor(g: GapInfo): string {
   return (
     `间隙 ${g.gap}：左 ${g.left} / 右 ${g.right}，` +
     `模式分值 ${g.patternScore}（${g.patternSource ? g.patternSource.raw : '无命中'}），` +
-    `最终分值 ${g.finalScore}\n${g.reason}`
+    `最终分值 ${g.finalScore}，来源：${g.finalSource}\n${g.reason}`
   );
 }
 
@@ -111,7 +113,11 @@ function render(): void {
       for (let i = 0; i < r.word.length; i++) {
         const g = r.gaps[i];
         cells += chipHtml(r.word, g);
-        cells += `<span class="letter">${r.word[i]}</span>`;
+        if (r.word[i] === '-') {
+          cells += '<span class="fixed-hyphen" title="复合词固定连接号（原词的一部分）">=</span>';
+        } else {
+          cells += `<span class="letter">${r.word[i]}</span>`;
+        }
       }
       cells += chipHtml(r.word, r.gaps[r.word.length]);
 
@@ -128,7 +134,8 @@ function render(): void {
 }
 
 function chipHtml(word: string, g: GapInfo): string {
-  const label = g.status === 'edge' ? '·' : String(g.finalScore);
+  const label =
+    g.status === 'edge' ? '·' : g.status === 'fixed-boundary' ? '=' : String(g.finalScore);
   return (
     `<button class="chip ${chipClass(g.status)}" type="button" ` +
     `data-word="${escapeHtml(word)}" data-gap="${g.gap}" title="${escapeHtml(titleFor(g))}">${label}</button>`
@@ -141,7 +148,7 @@ function showDetail(card: HTMLElement, result: WordResult, gapNo: number): void 
   detail.innerHTML = `<table class="gap-table">
     <thead><tr>
       <th>间隙</th><th>左/右</th><th>模式分值</th><th>贡献最大值的模式</th>
-      <th>最终分值</th><th>状态</th><th>原因</th>
+      <th>最终分值</th><th>最终来源</th><th>状态</th><th>原因</th>
     </tr></thead>
     <tbody>${result.gaps
       .map((g) => {
@@ -152,6 +159,7 @@ function showDetail(card: HTMLElement, result: WordResult, gapNo: number): void 
         <td>${g.patternScore}</td>
         <td class="mono">${g.patternSource ? escapeHtml(g.patternSource.raw) : '—'}</td>
         <td><b>${g.finalScore}</b></td>
+        <td class="reason">${escapeHtml(g.finalSource)}</td>
         <td><span class="dot ${chipClass(g.status)}"></span>${statusText(g.status)}</td>
         <td class="reason">${escapeHtml(g.reason)}</td>
       </tr>`;
